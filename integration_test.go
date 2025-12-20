@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDNSOverHTTPSWorks(t *testing.T) {
+func TestIntegrationDNSOverHTTPSWorks(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip test in short mode")
 	}
@@ -29,7 +29,7 @@ func TestDNSOverHTTPSWorks(t *testing.T) {
 	assert.Equal(t, expectAddrs, addrs)
 }
 
-func TestDNSOverHTTP3Works(t *testing.T) {
+func TestIntegrationDNSOverHTTP3Works(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip test in short mode")
 	}
@@ -45,7 +45,7 @@ func TestDNSOverHTTP3Works(t *testing.T) {
 	assert.Equal(t, expectAddrs, addrs)
 }
 
-func TestDNSOverUDPWorks(t *testing.T) {
+func TestIntegrationDNSOverUDPWorks(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip test in short mode")
 	}
@@ -58,7 +58,7 @@ func TestDNSOverUDPWorks(t *testing.T) {
 	assert.Equal(t, expectAddrs, addrs)
 }
 
-func TestDNSOverUDPExchangeAndCollectDuplicatesWork(t *testing.T) {
+func TestIntegrationDNSOverUDPExchangeAndCollectDuplicatesWork(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip test in short mode")
 	}
@@ -73,7 +73,7 @@ func TestDNSOverUDPExchangeAndCollectDuplicatesWork(t *testing.T) {
 	assert.True(t, len(resps) >= 1)
 }
 
-func TestDNSOverTCPWorks(t *testing.T) {
+func TestIntegrationDNSOverTCPWorks(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip test in short mode")
 	}
@@ -86,7 +86,7 @@ func TestDNSOverTCPWorks(t *testing.T) {
 	assert.Equal(t, expectAddrs, addrs)
 }
 
-func TestDNSOverTLSWorks(t *testing.T) {
+func TestIntegrationDNSOverTLSWorks(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip test in short mode")
 	}
@@ -105,7 +105,7 @@ func TestDNSOverTLSWorks(t *testing.T) {
 	assert.Equal(t, expectAddrs, addrs)
 }
 
-func TestDNSOverQUICWorks(t *testing.T) {
+func TestIntegrationDNSOverQUICWorks(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip test in short mode")
 	}
