@@ -40,9 +40,15 @@
 //	query := dmi.NewQuery("dns.google", dns.TypeA)
 //	resps, err := exchanger.ExchangeAndCollectDuplicates(ctx, query)
 //
+// This package also contains code for testing DNS clients:
+//
+//  1. the [*Handler] and [*HandlerConfig] implement [dns.Handler] for testing.
+//
+//  2. the [*UDPTestServer] allows to test DNS-over-UDP.
+//
 // The code in this package is an evolution of code originally written for
-// [github.com/ooni/probe-cli], [github.com/rbmk-project/rbmk],
-// [github.com/rbmk-project/dnscore], and the standard library, where the
-// measurement specifics have been removed, only leaving in place the
-// basic infrastructure to perform network measurements.
+// [github.com/ooni/probe-cli], [github.com/rbmk-project/rbmk], [github.com/ooni/netem],
+// and the standard library, where the measurement specifics have been
+// removed, only leaving in place the basic infrastructure to
+// perform network measurements of DNS protocols.
 package dmi

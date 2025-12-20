@@ -16,8 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var expectAddrs = []string{"8.8.4.4", "8.8.8.8"}
-
 func TestDNSOverHTTPSWorks(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip test in short mode")
@@ -27,6 +25,7 @@ func TestDNSOverHTTPSWorks(t *testing.T) {
 	addrs, err := client.LookupA(ctx, "dns.google")
 	assert.NoError(t, err)
 	slices.Sort(addrs)
+	expectAddrs := []string{"8.8.4.4", "8.8.8.8"}
 	assert.Equal(t, expectAddrs, addrs)
 }
 
@@ -42,6 +41,7 @@ func TestDNSOverHTTP3Works(t *testing.T) {
 	addrs, err := client.LookupA(ctx, "dns.google")
 	assert.NoError(t, err)
 	slices.Sort(addrs)
+	expectAddrs := []string{"8.8.4.4", "8.8.8.8"}
 	assert.Equal(t, expectAddrs, addrs)
 }
 
@@ -54,6 +54,7 @@ func TestDNSOverUDPWorks(t *testing.T) {
 	addrs, err := client.LookupA(ctx, "dns.google")
 	assert.NoError(t, err)
 	slices.Sort(addrs)
+	expectAddrs := []string{"8.8.4.4", "8.8.8.8"}
 	assert.Equal(t, expectAddrs, addrs)
 }
 
@@ -81,6 +82,7 @@ func TestDNSOverTCPWorks(t *testing.T) {
 	addrs, err := client.LookupA(ctx, "dns.google")
 	assert.NoError(t, err)
 	slices.Sort(addrs)
+	expectAddrs := []string{"8.8.4.4", "8.8.8.8"}
 	assert.Equal(t, expectAddrs, addrs)
 }
 
@@ -99,6 +101,7 @@ func TestDNSOverTLSWorks(t *testing.T) {
 	addrs, err := client.LookupA(ctx, "dns.google")
 	assert.NoError(t, err)
 	slices.Sort(addrs)
+	expectAddrs := []string{"8.8.4.4", "8.8.8.8"}
 	assert.Equal(t, expectAddrs, addrs)
 }
 
@@ -116,5 +119,6 @@ func TestDNSOverQUICWorks(t *testing.T) {
 	addrs, err := client.LookupA(ctx, "dns.google")
 	assert.NoError(t, err)
 	slices.Sort(addrs)
+	expectAddrs := []string{"8.8.4.4", "8.8.8.8"}
 	assert.Equal(t, expectAddrs, addrs)
 }
