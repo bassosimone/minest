@@ -60,3 +60,24 @@ func TestDialerSequentialConnectFailure(t *testing.T) {
 	_, err := dialer.DialContext(context.Background(), "tcp", "example.com:80")
 	require.ErrorIs(t, err, expectedErr)
 }
+
+func TestDialerShortCircuitIPLiteral(t *testing.T) {
+	var (
+		gotNetwork string
+		gotAddr    string
+	)
+	dialer := NewDialer(netDialerStub{
+		dialContext: func(context.Context, string, string) (net.Conn, error) {
+			gotNetwork = "tcp"
+			gotAddr = "203.0.113.7:80"
+			return nil, errors.New("dial failed")
+		},
+	}, resolverStub{
+		lookupHost: func(context.Context, string) ([]string, error) {
+			panic("unexpected lookup")
+		},
+	})
+	_, _ = dialer.DialContext(context.Background(), "tcp", "203.0.113.7:80")
+	require.Equal(t, "tcp", gotNetwork)
+	require.Equal(t, "203.0.113.7:80", gotAddr)
+}
