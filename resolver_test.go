@@ -11,6 +11,7 @@ import (
 
 	"github.com/bassosimone/dnscodec"
 	"github.com/bassosimone/dnstest"
+	"github.com/miekg/dns"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -57,6 +58,14 @@ func lookupHost(domain string) func(*Resolver, context.Context) ([]string, error
 	return func(r *Resolver, ctx context.Context) ([]string, error) {
 		return r.LookupHost(ctx, domain)
 	}
+}
+
+type transportStub struct {
+	exchange func(context.Context, *dnscodec.Query) (*dnscodec.Response, error)
+}
+
+func (ts transportStub) Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
+	return ts.exchange(ctx, query)
 }
 
 func TestResolverLookupSuccess(t *testing.T) {
@@ -258,4 +267,40 @@ func TestResolverLookupNoTransport(t *testing.T) {
 	addrs, err := reso.LookupHost(context.Background(), "example.com")
 	require.Error(t, err)
 	assert.Empty(t, addrs)
+}
+
+func TestResolverLookupCNAMEWithOnlyARecords(t *testing.T) {
+	// We need a stubbed transport to model a misbehaving server that
+	// returns A records to a CNAME query, which the dnstest handler
+	// cannot generate. Note that an A response to a CNAME query could
+	// for example happen with bad censorship equipment.
+	query := dnscodec.NewQuery("example.com", dns.TypeCNAME)
+	query.ID = 1
+	queryMsg, err := query.NewMsg()
+	require.NoError(t, err)
+
+	respMsg := new(dns.Msg)
+	respMsg.SetReply(queryMsg)
+	respMsg.Answer = append(respMsg.Answer, &dns.A{
+		Hdr: dns.RR_Header{
+			Name:   queryMsg.Question[0].Name,
+			Rrtype: dns.TypeA,
+			Class:  dns.ClassINET,
+			Ttl:    60,
+		},
+		A: netip.MustParseAddr("93.184.216.34").AsSlice(),
+	})
+
+	resp, err := dnscodec.ParseResponse(queryMsg, respMsg)
+	require.NoError(t, err)
+
+	reso := NewResolver(transportStub{
+		exchange: func(context.Context, *dnscodec.Query) (*dnscodec.Response, error) {
+			return resp, nil
+		},
+	})
+
+	cname, err := reso.LookupCNAME(context.Background(), "example.com")
+	require.ErrorIs(t, err, dnscodec.ErrNoData)
+	assert.Empty(t, cname)
 }
