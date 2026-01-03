@@ -8,52 +8,37 @@ import (
 	"net"
 	"testing"
 
+	"github.com/bassosimone/netstub"
 	"github.com/stretchr/testify/require"
 )
 
-type resolverStub struct {
-	lookupHost func(context.Context, string) ([]string, error)
-}
-
-func (rs resolverStub) LookupHost(ctx context.Context, name string) ([]string, error) {
-	return rs.lookupHost(ctx, name)
-}
-
-type netDialerStub struct {
-	dialContext func(context.Context, string, string) (net.Conn, error)
-}
-
-func (nds netDialerStub) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	return nds.dialContext(ctx, network, address)
-}
-
 func TestDialerSplitHostPortFailure(t *testing.T) {
-	dialer := NewDialer(netDialerStub{}, resolverStub{})
+	dialer := NewDialer(&netstub.FuncDialer{}, &netstub.FuncResolver{})
 	_, err := dialer.DialContext(context.Background(), "tcp", "bad-address")
 	require.Error(t, err)
 }
 
 func TestDialerLookupHostFailure(t *testing.T) {
 	expectedErr := errors.New("lookup failed")
-	resolver := resolverStub{
-		lookupHost: func(context.Context, string) ([]string, error) {
+	resolver := &netstub.FuncResolver{
+		LookupHostFunc: func(context.Context, string) ([]string, error) {
 			return nil, expectedErr
 		},
 	}
-	dialer := NewDialer(netDialerStub{}, resolver)
+	dialer := NewDialer(&netstub.FuncDialer{}, resolver)
 	_, err := dialer.DialContext(context.Background(), "tcp", "example.com:80")
 	require.ErrorIs(t, err, expectedErr)
 }
 
 func TestDialerSequentialConnectFailure(t *testing.T) {
 	expectedErr := errors.New("dial failed")
-	resolver := resolverStub{
-		lookupHost: func(context.Context, string) ([]string, error) {
+	resolver := &netstub.FuncResolver{
+		LookupHostFunc: func(context.Context, string) ([]string, error) {
 			return []string{"203.0.113.1", "203.0.113.2"}, nil
 		},
 	}
-	dialer := NewDialer(netDialerStub{
-		dialContext: func(context.Context, string, string) (net.Conn, error) {
+	dialer := NewDialer(&netstub.FuncDialer{
+		DialContextFunc: func(context.Context, string, string) (net.Conn, error) {
 			return nil, expectedErr
 		},
 	}, resolver)
@@ -66,17 +51,13 @@ func TestDialerShortCircuitIPLiteral(t *testing.T) {
 		gotNetwork string
 		gotAddr    string
 	)
-	dialer := NewDialer(netDialerStub{
-		dialContext: func(context.Context, string, string) (net.Conn, error) {
+	dialer := NewDialer(&netstub.FuncDialer{
+		DialContextFunc: func(context.Context, string, string) (net.Conn, error) {
 			gotNetwork = "tcp"
 			gotAddr = "203.0.113.7:80"
 			return nil, errors.New("dial failed")
 		},
-	}, resolverStub{
-		lookupHost: func(context.Context, string) ([]string, error) {
-			panic("unexpected lookup")
-		},
-	})
+	}, &netstub.FuncResolver{})
 	_, _ = dialer.DialContext(context.Background(), "tcp", "203.0.113.7:80")
 	require.Equal(t, "tcp", gotNetwork)
 	require.Equal(t, "203.0.113.7:80", gotAddr)

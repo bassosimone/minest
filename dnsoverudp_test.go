@@ -9,60 +9,17 @@ import (
 	"net/netip"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/bassosimone/dnscodec"
+	"github.com/bassosimone/netstub"
 	"github.com/miekg/dns"
 	"github.com/stretchr/testify/require"
 )
 
-type connStub struct {
-	read        func([]byte) (int, error)
-	write       func([]byte) (int, error)
-	close       func() error
-	localAddr   func() net.Addr
-	remoteAddr  func() net.Addr
-	setDeadline func(time.Time) error
-	setReadDead func(time.Time) error
-	setWriteDea func(time.Time) error
-}
-
-func (cs connStub) Read(b []byte) (int, error) {
-	return cs.read(b)
-}
-
-func (cs connStub) Write(b []byte) (int, error) {
-	return cs.write(b)
-}
-
-func (cs connStub) Close() error {
-	return cs.close()
-}
-
-func (cs connStub) LocalAddr() net.Addr {
-	return cs.localAddr()
-}
-
-func (cs connStub) RemoteAddr() net.Addr {
-	return cs.remoteAddr()
-}
-
-func (cs connStub) SetDeadline(t time.Time) error {
-	return cs.setDeadline(t)
-}
-
-func (cs connStub) SetReadDeadline(t time.Time) error {
-	return cs.setReadDead(t)
-}
-
-func (cs connStub) SetWriteDeadline(t time.Time) error {
-	return cs.setWriteDea(t)
-}
-
 func TestDNSOverUDPTransportExchangeDialFailure(t *testing.T) {
 	expectedErr := errors.New("dial failure")
-	transport := NewDNSOverUDPTransport(netDialerStub{
-		dialContext: func(context.Context, string, string) (net.Conn, error) {
+	transport := NewDNSOverUDPTransport(&netstub.FuncDialer{
+		DialContextFunc: func(context.Context, string, string) (net.Conn, error) {
 			return nil, expectedErr
 		},
 	}, netip.MustParseAddrPort("127.0.0.1:53"))
@@ -91,20 +48,20 @@ func TestDNSOverUDPTransportSendQueryErrors(t *testing.T) {
 		{
 			name:  "invalid query name",
 			query: dnscodec.NewQuery("\t", dns.TypeA),
-			conn:  connStub{},
+			conn:  &netstub.FuncConn{},
 		},
 
 		{
 			name:  "query too large",
 			query: dnscodec.NewQuery(strings.Repeat("a", 64)+".example.com", dns.TypeA),
-			conn:  connStub{},
+			conn:  &netstub.FuncConn{},
 		},
 
 		{
 			name:  "write error",
 			query: dnscodec.NewQuery("example.com", dns.TypeA),
-			conn: connStub{
-				write: func([]byte) (int, error) {
+			conn: &netstub.FuncConn{
+				WriteFunc: func([]byte) (int, error) {
 					return 0, writeErr
 				},
 			},
@@ -112,7 +69,7 @@ func TestDNSOverUDPTransportSendQueryErrors(t *testing.T) {
 		},
 	}
 
-	transport := NewDNSOverUDPTransport(netDialerStub{}, netip.MustParseAddrPort("127.0.0.1:53"))
+	transport := NewDNSOverUDPTransport(&netstub.FuncDialer{}, netip.MustParseAddrPort("127.0.0.1:53"))
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := transport.SendQuery(context.Background(), tc.conn, tc.query)
@@ -175,11 +132,11 @@ func TestDNSOverUDPTransportRecvResponseErrors(t *testing.T) {
 		},
 	}
 
-	transport := NewDNSOverUDPTransport(netDialerStub{}, netip.MustParseAddrPort("127.0.0.1:53"))
+	transport := NewDNSOverUDPTransport(&netstub.FuncDialer{}, netip.MustParseAddrPort("127.0.0.1:53"))
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := transport.RecvResponse(context.Background(), connStub{
-				read: tc.read,
+			_, err := transport.RecvResponse(context.Background(), &netstub.FuncConn{
+				ReadFunc: tc.read,
 			}, queryMsg)
 			if tc.wantErr != nil {
 				require.ErrorIs(t, err, tc.wantErr)
@@ -212,20 +169,20 @@ func TestDNSOverUDPTransportExchangeWithConnErrors(t *testing.T) {
 		{
 			name:  "invalid query name",
 			query: dnscodec.NewQuery("\t", dns.TypeA),
-			conn:  connStub{},
+			conn:  &netstub.FuncConn{},
 		},
 
 		{
 			name:  "query too large",
 			query: dnscodec.NewQuery(strings.Repeat("a", 64)+".example.com", dns.TypeA),
-			conn:  connStub{},
+			conn:  &netstub.FuncConn{},
 		},
 
 		{
 			name:  "write error",
 			query: dnscodec.NewQuery("example.com", dns.TypeA),
-			conn: connStub{
-				write: func([]byte) (int, error) {
+			conn: &netstub.FuncConn{
+				WriteFunc: func([]byte) (int, error) {
 					return 0, writeErr
 				},
 			},
@@ -235,11 +192,11 @@ func TestDNSOverUDPTransportExchangeWithConnErrors(t *testing.T) {
 		{
 			name:  "read error",
 			query: dnscodec.NewQuery("example.com", dns.TypeA),
-			conn: connStub{
-				write: func(b []byte) (int, error) {
+			conn: &netstub.FuncConn{
+				WriteFunc: func(b []byte) (int, error) {
 					return len(b), nil
 				},
-				read: func([]byte) (int, error) {
+				ReadFunc: func([]byte) (int, error) {
 					return 0, readErr
 				},
 			},
@@ -247,7 +204,7 @@ func TestDNSOverUDPTransportExchangeWithConnErrors(t *testing.T) {
 		},
 	}
 
-	txp := NewDNSOverUDPTransport(netDialerStub{}, netip.MustParseAddrPort("127.0.0.1:53"))
+	txp := NewDNSOverUDPTransport(&netstub.FuncDialer{}, netip.MustParseAddrPort("127.0.0.1:53"))
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := txp.ExchangeWithConn(context.Background(), tc.conn, tc.query)
