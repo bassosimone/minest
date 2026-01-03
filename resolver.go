@@ -131,6 +131,11 @@ func (r *Resolver) LookupCNAME(ctx context.Context, domain string) (string, erro
 
 // lookup is the function performing the actual lookup.
 func (r *Resolver) lookup(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
+	// Handle the case where there are no transports
+	if len(r.Transports) <= 0 {
+		return nil, errors.New("no configured transport")
+	}
+
 	// Honour the configured lookup timeout
 	ctx, cancel := context.WithTimeout(ctx, r.Timeout)
 	defer cancel()
@@ -149,9 +154,7 @@ func (r *Resolver) lookup(ctx context.Context, query *dnscodec.Query) (*dnscodec
 		return resp, nil
 	}
 
-	// Handle the case where there are no errors
-	if len(errv) <= 0 {
-		errv = append(errv, errors.New("no configured transport"))
-	}
+	// Assemble a composed error
+	runtimex.Assert(len(errv) >= 1)
 	return nil, errors.Join(errv...)
 }

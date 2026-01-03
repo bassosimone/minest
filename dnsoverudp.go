@@ -28,12 +28,12 @@ type NetDialer interface {
 type DNSOverUDPTransport struct {
 	// Dialer is the [NetDialer] to use to create connections.
 	//
-	// Set by [NewUDPTransport] to the user-provided value.
+	// Set by [NewDNSOverUDPTransport] to the user-provided value.
 	Dialer NetDialer
 
 	// Endpoint is the server endpoint to use to query.
 	//
-	// Set by [NewUDPTransport] to the user-provided value.
+	// Set by [NewDNSOverUDPTransport] to the user-provided value.
 	Endpoint netip.AddrPort
 }
 
@@ -80,8 +80,11 @@ func (dt *DNSOverUDPTransport) Exchange(ctx context.Context, query *dnscodec.Que
 }
 
 // SendQuery sends a [*dnscodec.Query] using a [net.Conn].
+//
+// We only honor deadlines from the context; canceling the context without a
+// deadline does not interrupt I/O. This behavior may change in the future.
 func (dt *DNSOverUDPTransport) SendQuery(ctx context.Context, conn net.Conn, query *dnscodec.Query) (*dns.Msg, error) {
-	// 1. Use the context deadline to limit the lifetime
+	// 1. Use the context deadline to limit the lifetime.
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = conn.SetDeadline(deadline)
 		defer conn.SetDeadline(time.Time{})
@@ -107,9 +110,12 @@ func (dt *DNSOverUDPTransport) SendQuery(ctx context.Context, conn net.Conn, que
 }
 
 // RecvResponse receives a [*dnscodec.Response] using a [net.Conn].
+//
+// We only honor deadlines from the context; canceling the context without a
+// deadline does not interrupt I/O. This behavior may change in the future.
 func (dt *DNSOverUDPTransport) RecvResponse(
 	ctx context.Context, conn net.Conn, queryMsg *dns.Msg) (*dnscodec.Response, error) {
-	// 1. Use the context deadline to limit the lifetime
+	// 1. Use the context deadline to limit the lifetime.
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = conn.SetDeadline(deadline)
 		defer conn.SetDeadline(time.Time{})
