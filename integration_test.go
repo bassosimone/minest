@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package minest
+package minest_test
 
 import (
 	"context"
@@ -9,16 +9,16 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/bassosimone/minest"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIntegrationDNSOverUDPWorks(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skip test in short mode")
-	}
 	ctx := context.Background()
-	resolver := NewResolver(NewDNSOverUDPTransport(&net.Dialer{}, netip.MustParseAddrPort("8.8.4.4:53")))
-	addrs, err := resolver.LookupA(ctx, "dns.google")
+	dialer := minest.NewDialer(&net.Dialer{}, &net.Resolver{})
+	txp := minest.NewDNSOverUDPTransport(dialer, netip.MustParseAddrPort("8.8.4.4:53"))
+	reso := minest.NewResolver(txp)
+	addrs, err := reso.LookupA(ctx, "dns.google")
 	assert.NoError(t, err)
 	slices.Sort(addrs)
 	expectAddrs := []string{"8.8.4.4", "8.8.8.8"}
