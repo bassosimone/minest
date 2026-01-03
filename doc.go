@@ -1,54 +1,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package minest contains DNS measurement infrastructure.
+// Package minest implements a minimal network stack.
 //
-// It contains a reasonably correct DNS resolver implementation that can be
-// useful to write DNS measurement tools.
+// The [*Dialer] and [*Resolver] types are like [*net.Dialer] and [*net.Resolver] but
+// depend on interfaces. This design choice allows to use multiple network backends
+// (including, e.g., [github.com/bassosimone/uis] as the backend), with the most typical
+// backend being the standard library itself.
 //
-// The core high-level abstraction is the [*Resolver]. It is loosely compatible with
-// [*net.Resolver] (including emitting errors using the same string suffixes) and
-// leverages the [DNSTransport] to exchange DNS queries with servers.
+// The [*Resolver] depends on [NetDialer], which is an interface implemented by
+// both [*net.Dialer] and [*Dialer]. The [*Dialer] depend on [NetDialer] and
+// [DialerResolver], which is an interface implemented by both [*net.Resolver]
+// and [Resolver].
 //
-// We implement the following DNS protocols:
+// A [*Resolver] also depends on a [DNSTransport]. This package includes
+// [DNSOverUDPTransport], which implements [DNSTransport] for DNS-over-UDP
+// but you can also use [github.com/bassosimone/dnsoverhttps] and
+// [github.com/bassosimone/dnsoverstream] as transports. Thus, the [*Resolver]
+// can query using DNS over UDP, TCP, TLS, QUIC, HTTPS, and HTTP3.
 //
-//  1. DNS over UDP: implemented by [DNSOverUDPTransport]
-//
-//  2. DNS over TCP: implemented by [StreamTransport] using [*net.Dialer]
-//
-//  3. DNS over TLS: implemented by [StreamTransport] using [*tls.Dialer]
-//
-//  4. DNS over QUIC: implemented by [QUICTransport]
-//
-//  5. DNS over HTTPS: implemented by [HTTPSTransport]
-//
-//  6. DNS over HTTP/3: implemented by [HTTPSTransport] when configured with [*http3.Transport]
-//
-// We also implement DNS query generation with [NewQuery] and DNS response
-// parsing with [NewResponse], which can be used independently.
-//
-// For example, to lookup A and AAAA records for a domain:
-//
-//	resolver := dmi.NewResolver(dmi.NewHTTPSTransport(http.DefaultClient, "https://dns.google/dns-query"))
-//	addrs, err := resolver.LookupHost(context.Background(), "dns.google")
-//
-// The [*DNSOverUDPTransport.ExchangeAndCollectDuplicates] method allows to
-// detect duplicate responses. This could only happen for UDP and usually
-// is a signature of censorship (e.g., in China) or misconfiguration
-// causing packets to be duplicated. Use this feature as follows:
-//
-//	transport := dmi.NewUDPTransport(&net.Dialer{}, "8.8.8.8:53"))
-//	query := dmi.NewQuery("dns.google", dns.TypeA)
-//	resps, err := transport.ExchangeAndCollectDuplicates(ctx, query)
-//
-// This package also contains code for testing DNS resolvers:
-//
-//  1. the [*Handler] and [*HandlerConfig] implement [dns.Handler] for testing.
-//
-//  2. the [*UDPTestServer] allows to test DNS-over-UDP.
-//
-// The code in this package is an evolution of code originally written for
-// [github.com/ooni/probe-cli], [github.com/rbmk-project/rbmk], [github.com/ooni/netem],
-// and the standard library, where the measurement specifics have been
-// removed, only leaving in place the basic infrastructure to
-// perform network measurements of DNS protocols.
+// This package focuses on measuring the internet, therefore it is optimized
+// for simplicity and does not implement performance optimizations such as
+// happy eyeballs inside its [*Dialer].
 package minest
