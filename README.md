@@ -3,9 +3,9 @@
 [![GoDoc](https://pkg.go.dev/badge/github.com/bassosimone/minest)](https://pkg.go.dev/github.com/bassosimone/minest) [![Build Status](https://github.com/bassosimone/minest/actions/workflows/go.yml/badge.svg)](https://github.com/bassosimone/minest/actions) [![codecov](https://codecov.io/gh/bassosimone/minest/branch/main/graph/badge.svg)](https://codecov.io/gh/bassosimone/minest)
 
 The `minest` Go package implements a minimal network stack with a DNS
-resolver that can be wired to standard library transports or to
-alternative stacks such as [bassosimone/uis](https://github.com/bassosimone/uis/)
-(which uses [gVisor](https://gvisor.dev/)).
+resolver that can be wired to the standard library or to
+[bassosimone/uis](https://github.com/bassosimone/uis/), thus enabling to
+write integration tests using TCP in userspace.
 
 Basic usage is like:
 
