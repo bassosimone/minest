@@ -5,7 +5,7 @@
 // Adapted from: https://github.com/ooni/probe-engine/blob/v0.23.0/netx/resolver/dnsoverudp.go
 //
 
-package dmi
+package minest
 
 import (
 	"context"

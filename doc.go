@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package dmi contains DNS measurement infrastructure.
+// Package minest contains DNS measurement infrastructure.
 //
 // It contains a reasonably correct DNS client implementation that can be
 // useful to write DNS measurement tools.
@@ -51,4 +51,4 @@
 // and the standard library, where the measurement specifics have been
 // removed, only leaving in place the basic infrastructure to
 // perform network measurements of DNS protocols.
-package dmi
+package minest
