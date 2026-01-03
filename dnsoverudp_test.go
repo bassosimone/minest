@@ -16,6 +16,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// buildRawResponseFromQuery packs a valid DNS response from a raw DNS query.
+func buildRawResponseFromQuery(t *testing.T, rawQuery []byte) []byte {
+	t.Helper()
+
+	queryMsg := &dns.Msg{}
+	require.NoError(t, queryMsg.Unpack(rawQuery))
+
+	resp := &dns.Msg{}
+	resp.SetReply(queryMsg)
+	resp.Answer = append(resp.Answer, &dns.A{
+		Hdr: dns.RR_Header{
+			Name:   queryMsg.Question[0].Name,
+			Rrtype: dns.TypeA,
+			Class:  dns.ClassINET,
+			Ttl:    1,
+		},
+		A: []byte{8, 8, 8, 8},
+	})
+	rawResp, err := resp.Pack()
+	require.NoError(t, err)
+
+	return rawResp
+}
+
 func TestDNSOverUDPTransportExchangeDialFailure(t *testing.T) {
 	expectedErr := errors.New("dial failure")
 	transport := NewDNSOverUDPTransport(&netstub.FuncDialer{
@@ -25,6 +49,70 @@ func TestDNSOverUDPTransportExchangeDialFailure(t *testing.T) {
 	}, netip.MustParseAddrPort("127.0.0.1:53"))
 	_, err := transport.Exchange(context.Background(), dnscodec.NewQuery("example.com", dns.TypeA))
 	require.ErrorIs(t, err, expectedErr)
+}
+
+func TestDNSOverUDPTransportObserveRawQuery(t *testing.T) {
+	var (
+		rawWritten []byte
+		rawResp    []byte
+		hookQuery  []byte
+	)
+	conn := &netstub.FuncConn{
+		WriteFunc: func(b []byte) (int, error) {
+			rawWritten = append([]byte{}, b...)
+			rawResp = buildRawResponseFromQuery(t, rawWritten)
+			return len(b), nil
+		},
+		ReadFunc: func(b []byte) (int, error) {
+			copy(b, rawResp)
+			return len(rawResp), nil
+		},
+	}
+	transport := NewDNSOverUDPTransport(&netstub.FuncDialer{}, netip.MustParseAddrPort("127.0.0.1:53"))
+	transport.ObserveRawQuery = func(p []byte) {
+		hookQuery = append([]byte{}, p...)
+		if len(p) > 0 {
+			p[0] ^= 0xff // mutate to verify we've got a copy
+		}
+	}
+
+	query := dnscodec.NewQuery("example.com", dns.TypeA)
+	resp, err := transport.ExchangeWithConn(context.Background(), conn, query)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, rawWritten, hookQuery)
+}
+
+func TestDNSOverUDPTransportObserveRawResponse(t *testing.T) {
+	var (
+		rawResp  []byte
+		hookResp []byte
+	)
+	conn := &netstub.FuncConn{
+		WriteFunc: func(b []byte) (int, error) {
+			rawResp = buildRawResponseFromQuery(t, b)
+			return len(b), nil
+		},
+		ReadFunc: func(b []byte) (int, error) {
+			copy(b, rawResp)
+			return len(rawResp), nil
+		},
+	}
+	transport := NewDNSOverUDPTransport(&netstub.FuncDialer{}, netip.MustParseAddrPort("127.0.0.1:53"))
+	transport.ObserveRawResponse = func(p []byte) {
+		hookResp = append([]byte{}, p...)
+		if len(p) > 0 {
+			p[0] ^= 0xff // mutate to verify we've got a copy
+		}
+	}
+
+	query := dnscodec.NewQuery("example.com", dns.TypeA)
+	resp, err := transport.ExchangeWithConn(context.Background(), conn, query)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, rawResp, hookResp)
 }
 
 func TestDNSOverUDPTransportSendQueryErrors(t *testing.T) {

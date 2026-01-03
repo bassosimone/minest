@@ -8,6 +8,7 @@
 package minest
 
 import (
+	"bytes"
 	"context"
 	"net"
 	"net/netip"
@@ -35,6 +36,12 @@ type DNSOverUDPTransport struct {
 	//
 	// Set by [NewDNSOverUDPTransport] to the user-provided value.
 	Endpoint netip.AddrPort
+
+	// ObserveRawQuery is an optional hook called with a copy of the raw DNS query.
+	ObserveRawQuery func([]byte)
+
+	// ObserveRawResponse is an optional hook called with a copy of the raw DNS response.
+	ObserveRawResponse func([]byte)
 }
 
 // NewDNSOverUDPTransport creates a new [*DNSOverUDPTransport].
@@ -101,6 +108,9 @@ func (dt *DNSOverUDPTransport) SendQuery(ctx context.Context, conn net.Conn, que
 	if err != nil {
 		return nil, err
 	}
+	if dt.ObserveRawQuery != nil {
+		dt.ObserveRawQuery(bytes.Clone(rawQuery))
+	}
 
 	// 3. Send the query.
 	if _, err := conn.Write(rawQuery); err != nil {
@@ -128,6 +138,9 @@ func (dt *DNSOverUDPTransport) RecvResponse(
 		return nil, err
 	}
 	rawResp := buff[:count]
+	if dt.ObserveRawResponse != nil {
+		dt.ObserveRawResponse(bytes.Clone(rawResp))
+	}
 
 	// 5. Parse the response and possibly log that we received it.
 	respMsg := new(dns.Msg)
