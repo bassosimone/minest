@@ -1,5 +1,9 @@
 github.com/bassosimone/dnscodec v0.0.0-20260102202954-f8e13f827a5f h1:QqNTvOV69wjMVokPs2+K7ErBnuIgJ4CF98+mgoBU70Y=
 github.com/bassosimone/dnscodec v0.0.0-20260102202954-f8e13f827a5f/go.mod h1:NLnP+sa7BvS1M4E6bqHg4F2ZtcyA9VOFF+0CN3bQZF0=
+github.com/bassosimone/dnstest v0.0.0-20251231113033-a337a8ce22ac h1:vnZbhn5q46Uaiz5koaovb78p17brlkTz/SVG/RrBKrg=
+github.com/bassosimone/dnstest v0.0.0-20251231113033-a337a8ce22ac/go.mod h1:GpYteCbifM9Z99B/z33TD8tKRFlLfkULvWOoR/u19Rc=
+github.com/bassosimone/pkitest v0.0.0-20251218111451-e3ac30bb1628 h1:8NFclZzz4YTQ9EjgwfPHA5k67c0MZAmAYDfDS/YAlCo=
+github.com/bassosimone/pkitest v0.0.0-20251218111451-e3ac30bb1628/go.mod h1:E5JHCKyWUNHuaeIVILFQe0+xT5VRoy5sNfTe9BZBFv4=
 github.com/bassosimone/runtimex v0.0.0-20251217192325-70882b9ab4d3 h1:NHcu1geY9Wq9qHexLeukJMAZ48imFAXi8jGJAz4QdO4=
 github.com/bassosimone/runtimex v0.0.0-20251217192325-70882b9ab4d3/go.mod h1:GDr46yuJzuDkzOMI1/9Voo3s7VmYBU/6pkuaI5FR7gE=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
@@ -20,8 +24,8 @@ github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsK
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
-github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
-github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
+github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
+github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 golang.org/x/mod v0.31.0 h1:HaW9xtz0+kOcWKwli0ZXy79Ix+UW/vOfmWI5QVd2tgI=

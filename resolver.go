@@ -88,9 +88,7 @@ func (r *Resolver) LookupHost(ctx context.Context, domain string) ([]string, err
 
 	// join addresses and deal with no data
 	addrs := append(ares.Value, aaaares.Value...)
-	if len(addrs) < 1 {
-		return nil, dnscodec.ErrNoData
-	}
+	runtimex.Assert(len(addrs) >= 1)
 	return addrs, nil
 }
 
@@ -144,6 +142,7 @@ func (r *Resolver) lookup(ctx context.Context, query *dnscodec.Query) (*dnscodec
 	errv := make([]error, 0, len(r.Transports))
 	for _, exc := range r.Transports {
 		if ctx.Err() != nil {
+			errv = append(errv, ctx.Err())
 			break
 		}
 		resp, err := exc.Exchange(ctx, query)
