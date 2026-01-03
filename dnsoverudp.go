@@ -9,50 +9,57 @@ package minest
 
 import (
 	"context"
-	"errors"
 	"net"
-	"os"
+	"net/netip"
 	"time"
 
 	"github.com/bassosimone/dnscodec"
 	"github.com/miekg/dns"
 )
 
-// UDPDialer abstracts over [*net.Dialer].
-type UDPDialer interface {
+// NetDialer abstracts over [*net.Dialer].
+type NetDialer interface {
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
-// UDPTransport implements [DNSTransport] for DNS over UDP.
+// DNSOverUDPTransport implements [DNSTransport] for DNS over UDP.
 //
-// Construct using [NewUDPTransport].
-type UDPTransport struct {
-	// Dialer is the UDPDialer to use to query.
+// Construct using [NewDNSOverUDPTransport].
+type DNSOverUDPTransport struct {
+	// Dialer is the [NetDialer] to use to create connections.
 	//
 	// Set by [NewUDPTransport] to the user-provided value.
-	Dialer UDPDialer
+	Dialer NetDialer
 
 	// Endpoint is the server endpoint to use to query.
 	//
 	// Set by [NewUDPTransport] to the user-provided value.
-	Endpoint string
+	Endpoint netip.AddrPort
 }
 
-// NewUDPTransport creates a new [*UDPTransport].
-func NewUDPTransport(dialer UDPDialer, endpoint string) *UDPTransport {
-	return &UDPTransport{
+// NewDNSOverUDPTransport creates a new [*DNSOverUDPTransport].
+func NewDNSOverUDPTransport(dialer NetDialer, endpoint netip.AddrPort) *DNSOverUDPTransport {
+	return &DNSOverUDPTransport{
 		Dialer:   dialer,
 		Endpoint: endpoint,
 	}
 }
 
-// Ensure that [*UDPTransport] implements [DNSTransport].
-var _ DNSTransport = &UDPTransport{}
+// Ensure that [*DNSOverUDPTransport] implements [DNSTransport].
+var _ DNSTransport = &DNSOverUDPTransport{}
+
+// Dial creates a [net.Conn] with the configured endpoint.
+//
+// This method enables building long-lived connections and reusing them across
+// multiple exchanges via [*DNSOverUDPTransport.ExchangeWithConn].
+func (dt *DNSOverUDPTransport) Dial(ctx context.Context) (net.Conn, error) {
+	return dt.Dialer.DialContext(ctx, "udp", dt.Endpoint.String())
+}
 
 // Exchange implements [DNSTransport].
-func (ue *UDPTransport) Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
+func (dt *DNSOverUDPTransport) Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
 	// 1. create the connection
-	conn, err := ue.Dialer.DialContext(ctx, "udp", ue.Endpoint)
+	conn, err := dt.Dial(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -68,15 +75,20 @@ func (ue *UDPTransport) Exchange(ctx context.Context, query *dnscodec.Query) (*d
 		<-ctx.Done()
 	}()
 
-	// 3. Use the context deadline to limit the query lifetime
-	// as documented in the [*Transport.Query] function.
+	// 3. defer to ExchangeWithConn.
+	return dt.ExchangeWithConn(ctx, conn, query)
+}
+
+// SendQuery sends a [*dnscodec.Query] using a [net.Conn].
+func (dt *DNSOverUDPTransport) SendQuery(ctx context.Context, conn net.Conn, query *dnscodec.Query) (*dns.Msg, error) {
+	// 1. Use the context deadline to limit the lifetime
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = conn.SetDeadline(deadline)
+		defer conn.SetDeadline(time.Time{})
 	}
 
-	// 4. Mutate and serialize the query.
+	// 2. Mutate and serialize the query.
 	query = query.Clone()
-	query.ID = dns.Id()
 	query.MaxSize = dnscodec.QueryMaxResponseSizeUDP
 	queryMsg, err := query.NewMsg()
 	if err != nil {
@@ -87,12 +99,23 @@ func (ue *UDPTransport) Exchange(ctx context.Context, query *dnscodec.Query) (*d
 		return nil, err
 	}
 
-	// 5. Send the query.
+	// 3. Send the query.
 	if _, err := conn.Write(rawQuery); err != nil {
 		return nil, err
 	}
+	return queryMsg, nil
+}
 
-	// 6. Read the response message.
+// RecvResponse receives a [*dnscodec.Response] using a [net.Conn].
+func (dt *DNSOverUDPTransport) RecvResponse(
+	ctx context.Context, conn net.Conn, queryMsg *dns.Msg) (*dnscodec.Response, error) {
+	// 1. Use the context deadline to limit the lifetime
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = conn.SetDeadline(deadline)
+		defer conn.SetDeadline(time.Time{})
+	}
+
+	// 4. Read the response message.
 	buff := make([]byte, dnscodec.QueryMaxResponseSizeUDP)
 	count, err := conn.Read(buff)
 	if err != nil {
@@ -100,7 +123,7 @@ func (ue *UDPTransport) Exchange(ctx context.Context, query *dnscodec.Query) (*d
 	}
 	rawResp := buff[:count]
 
-	// 7. Parse the response and possibly log that we received it.
+	// 5. Parse the response and possibly log that we received it.
 	respMsg := new(dns.Msg)
 	if err := respMsg.Unpack(rawResp); err != nil {
 		return nil, err
@@ -108,100 +131,14 @@ func (ue *UDPTransport) Exchange(ctx context.Context, query *dnscodec.Query) (*d
 	return dnscodec.ParseResponse(queryMsg, respMsg)
 }
 
-// ExchangeAndCollectDuplicates is like [*UDPTransport.Exchange] but
-// collects duplicate responses for the provided query. This method is useful
-// for internet censorship measurements. State-level infrastructure such as
-// China's Great Firewall inject bogus responses but do not block the
-// actual response from the legitimate DNS server. This method can also
-// be useful to detect misconfigurations and packet duplication.
+// ExchangeWithConn sends a [*dnscodec.Query] and receives a [*dnscodec.Response].
 //
-// This method collects responses in a loop until the deadline set
-// in the provided context is done. To prevent the code to loop forever
-// when no context deadline or cancellation is in place, we configure
-// a default deadline of one minute just in case.
-//
-// An error return value indicates one of the following conditions:
-//
-//  1. failure to serialize the query
-//
-//  2. failure to send the query
-//
-//  3. no responses received an recv error
-//
-// If we receive garbage or completely invalid DNS responses, we just
-// swallow the error. Typically, this does not happen when measuring
-// censorship. If you wrap the connection by providing a custom dialer,
-// you will have access to this additional information anyway.
-func (ue *UDPTransport) ExchangeAndCollectDuplicates(
-	ctx context.Context, query *dnscodec.Query) ([]*dnscodec.Response, error) {
-	// 1. create the connection
-	conn, err := ue.Dialer.DialContext(ctx, "udp", ue.Endpoint)
+// This method allows reusing a long-lived connection across multiple exchanges.
+func (dt *DNSOverUDPTransport) ExchangeWithConn(ctx context.Context,
+	conn net.Conn, query *dnscodec.Query) (*dnscodec.Response, error) {
+	queryMsg, err := dt.SendQuery(ctx, conn, query)
 	if err != nil {
 		return nil, err
 	}
-
-	// 2. Use a single connection for request, which is what the standard library
-	// does as well for and is more robust in terms of residual censorship.
-	//
-	// Make sure we react to context being canceled early.
-	//
-	// Ensure we have a default long deadline just to avoid running ~forever.
-	const defaultLongDeadline = time.Minute
-	ctx, cancel := context.WithTimeout(ctx, defaultLongDeadline)
-	defer cancel()
-	go func() {
-		defer conn.Close()
-		<-ctx.Done()
-	}()
-
-	// 3. Use the context deadline to limit the query lifetime
-	// as documented in the [*Transport.Query] function.
-	if deadline, ok := ctx.Deadline(); ok {
-		_ = conn.SetDeadline(deadline)
-	}
-
-	// 4. Mutate and serialize the query.
-	query = query.Clone()
-	query.ID = dns.Id()
-	query.MaxSize = dnscodec.QueryMaxResponseSizeUDP
-	queryMsg, err := query.NewMsg()
-	if err != nil {
-		return nil, err
-	}
-	rawQuery, err := queryMsg.Pack()
-	if err != nil {
-		return nil, err
-	}
-
-	// 5. Send the query.
-	if _, err := conn.Write(rawQuery); err != nil {
-		return nil, err
-	}
-
-	// 6. loop collecting responses.
-	var respv []*dnscodec.Response
-	for {
-		// 6.1. Read the response message.
-		buff := make([]byte, dnscodec.QueryMaxResponseSizeUDP)
-		count, err := conn.Read(buff)
-		if err != nil {
-			expectedErr := errors.Is(err, net.ErrClosed) || errors.Is(err, os.ErrDeadlineExceeded)
-			if len(respv) > 0 && expectedErr {
-				err = nil // swallow error when close or i/o timeout interrupt us
-			}
-			return respv, err
-		}
-		rawResp := buff[:count]
-
-		// 6.2. Parse the response
-		respMsg := new(dns.Msg)
-		if err := respMsg.Unpack(rawResp); err != nil {
-			continue
-		}
-		resp, err := dnscodec.ParseResponse(queryMsg, respMsg)
-		if err != nil {
-			continue
-		}
-		respv = append(respv, resp)
-	}
+	return dt.RecvResponse(ctx, conn, queryMsg)
 }

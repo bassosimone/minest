@@ -21,7 +21,7 @@ type DNSTransport interface {
 	Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error)
 }
 
-// Resolver behaves like [*net.Resolver] but uses a custom round tripper.
+// Resolver behaves like [*net.Resolver] but uses a [DNSTransport].
 //
 // Construct using [NewResolver].
 type Resolver struct {
@@ -131,13 +131,11 @@ func (r *Resolver) LookupCNAME(ctx context.Context, domain string) (string, erro
 
 // lookup is the function performing the actual lookup.
 func (r *Resolver) lookup(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
-	// TODO(bassosimone): wrap the error like the stdlib does, if possible.
-
 	// Honour the configured lookup timeout
 	ctx, cancel := context.WithTimeout(ctx, r.Timeout)
 	defer cancel()
 
-	// Try with each exchanger
+	// Try with each transport
 	errv := make([]error, 0, len(r.Transports))
 	for _, exc := range r.Transports {
 		if ctx.Err() != nil {
@@ -151,5 +149,9 @@ func (r *Resolver) lookup(ctx context.Context, query *dnscodec.Query) (*dnscodec
 		return resp, nil
 	}
 
+	// Handle the case where there are no errors
+	if len(errv) <= 0 {
+		errv = append(errv, errors.New("no configured transport"))
+	}
 	return nil, errors.Join(errv...)
 }

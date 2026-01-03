@@ -11,7 +11,7 @@
 //
 // We implement the following DNS protocols:
 //
-//  1. DNS over UDP: implemented by [UDPTransport]
+//  1. DNS over UDP: implemented by [DNSOverUDPTransport]
 //
 //  2. DNS over TCP: implemented by [StreamTransport] using [*net.Dialer]
 //
@@ -31,7 +31,7 @@
 //	resolver := dmi.NewResolver(dmi.NewHTTPSTransport(http.DefaultClient, "https://dns.google/dns-query"))
 //	addrs, err := resolver.LookupHost(context.Background(), "dns.google")
 //
-// The [*UDPTransport.ExchangeAndCollectDuplicates] method allows to
+// The [*DNSOverUDPTransport.ExchangeAndCollectDuplicates] method allows to
 // detect duplicate responses. This could only happen for UDP and usually
 // is a signature of censorship (e.g., in China) or misconfiguration
 // causing packets to be duplicated. Use this feature as follows:
