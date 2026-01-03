@@ -224,17 +224,6 @@ func TestResolverLookupNoAnswer(t *testing.T) {
 			},
 			lookup: lookupCNAME("www.example.com"),
 		},
-
-		// TODO(bassosimone): this test is failing... why?
-		/*
-			{
-				name: "LookupHost no answer",
-				setup: func(config *dnstest.HandlerConfig) {
-					config.AddCNAME("www.example.com", "example.com")
-				},
-				lookup: lookupHost("www.example.com"),
-			},
-		*/
 	}
 
 	for _, tc := range tests {
