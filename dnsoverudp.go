@@ -23,34 +23,34 @@ type UDPDialer interface {
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
-// UDPExchanger implements [ClientExchanger] for DNS over UDP.
+// UDPTransport implements [DNSTransport] for DNS over UDP.
 //
-// Construct using [NewUDPExchanger].
-type UDPExchanger struct {
+// Construct using [NewUDPTransport].
+type UDPTransport struct {
 	// Dialer is the UDPDialer to use to query.
 	//
-	// Set by [NewUDPExchanger] to the user-provided value.
+	// Set by [NewUDPTransport] to the user-provided value.
 	Dialer UDPDialer
 
 	// Endpoint is the server endpoint to use to query.
 	//
-	// Set by [NewUDPExchanger] to the user-provided value.
+	// Set by [NewUDPTransport] to the user-provided value.
 	Endpoint string
 }
 
-// NewUDPExchanger creates a new [*UDPExchanger].
-func NewUDPExchanger(dialer UDPDialer, endpoint string) *UDPExchanger {
-	return &UDPExchanger{
+// NewUDPTransport creates a new [*UDPTransport].
+func NewUDPTransport(dialer UDPDialer, endpoint string) *UDPTransport {
+	return &UDPTransport{
 		Dialer:   dialer,
 		Endpoint: endpoint,
 	}
 }
 
-// Ensure that [*UDPExchanger] implements [ClientExchanger].
-var _ ClientExchanger = &UDPExchanger{}
+// Ensure that [*UDPTransport] implements [DNSTransport].
+var _ DNSTransport = &UDPTransport{}
 
-// Exchange implements [ClientExchanger].
-func (ue *UDPExchanger) Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
+// Exchange implements [DNSTransport].
+func (ue *UDPTransport) Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
 	// 1. create the connection
 	conn, err := ue.Dialer.DialContext(ctx, "udp", ue.Endpoint)
 	if err != nil {
@@ -108,7 +108,7 @@ func (ue *UDPExchanger) Exchange(ctx context.Context, query *dnscodec.Query) (*d
 	return dnscodec.ParseResponse(queryMsg, respMsg)
 }
 
-// ExchangeAndCollectDuplicates is like [*UDPExchanger.Exchange] but
+// ExchangeAndCollectDuplicates is like [*UDPTransport.Exchange] but
 // collects duplicate responses for the provided query. This method is useful
 // for internet censorship measurements. State-level infrastructure such as
 // China's Great Firewall inject bogus responses but do not block the
@@ -132,7 +132,7 @@ func (ue *UDPExchanger) Exchange(ctx context.Context, query *dnscodec.Query) (*d
 // swallow the error. Typically, this does not happen when measuring
 // censorship. If you wrap the connection by providing a custom dialer,
 // you will have access to this additional information anyway.
-func (ue *UDPExchanger) ExchangeAndCollectDuplicates(
+func (ue *UDPTransport) ExchangeAndCollectDuplicates(
 	ctx context.Context, query *dnscodec.Query) ([]*dnscodec.Response, error) {
 	// 1. create the connection
 	conn, err := ue.Dialer.DialContext(ctx, "udp", ue.Endpoint)

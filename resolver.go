@@ -13,39 +13,39 @@ import (
 	"github.com/miekg/dns"
 )
 
-// DefaultClientTimeout is the default lookup timeout used by [*Client].
-const DefaultClientTimeout = 10 * time.Second
+// DefaultResolverTimeout is the default lookup timeout used by [*Resolver].
+const DefaultResolverTimeout = 10 * time.Second
 
-// ClientExchanger performs a DNS messages exchange.
-type ClientExchanger interface {
+// DNSTransport performs a DNS messages exchange.
+type DNSTransport interface {
 	Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error)
 }
 
-// Client behaves like [*net.Resolver] but uses a custom round tripper.
+// Resolver behaves like [*net.Resolver] but uses a custom round tripper.
 //
-// Construct using [NewClient].
-type Client struct {
-	// Exchangers are the [ClientExchanger] to use.
+// Construct using [NewResolver].
+type Resolver struct {
+	// Transports are the [DNSTransport] to use.
 	//
-	// Set by [NewClient] to the user-provided value.
-	Exchangers []ClientExchanger
+	// Set by [NewResolver] to the user-provided value.
+	Transports []DNSTransport
 
 	// Timeout is the overall lookup timeout.
 	//
-	// Set by [NewClient] to [DefaultClientTimeout].
+	// Set by [NewResolver] to [DefaultResolverTimeout].
 	Timeout time.Duration
 }
 
-// NewClient creactes a new [*Client] instance.
-func NewClient(exchanger ...ClientExchanger) *Client {
-	return &Client{
-		Exchangers: exchanger,
-		Timeout:    DefaultClientTimeout,
+// NewResolver creactes a new [*Resolver] instance.
+func NewResolver(transport ...DNSTransport) *Resolver {
+	return &Resolver{
+		Transports: transport,
+		Timeout:    DefaultResolverTimeout,
 	}
 }
 
-// clientResponse is an asynchronous DNS response.
-type clientResponse[T any] struct {
+// resolverResponse is an asynchronous DNS response.
+type resolverResponse[T any] struct {
 	// Err is the error or nil.
 	Err error
 
@@ -54,24 +54,24 @@ type clientResponse[T any] struct {
 }
 
 // LookupHost resolves a domain to IPv4 and IPv6 addrs.
-func (c *Client) LookupHost(ctx context.Context, domain string) ([]string, error) {
+func (r *Resolver) LookupHost(ctx context.Context, domain string) ([]string, error) {
 	// prepare for asynchronous lookup
-	ach := make(chan clientResponse[[]string], 1)
-	aaaach := make(chan clientResponse[[]string], 1)
+	ach := make(chan resolverResponse[[]string], 1)
+	aaaach := make(chan resolverResponse[[]string], 1)
 	wg := &sync.WaitGroup{}
 
 	// async lookup A
 	wg.Go(func() {
-		var r clientResponse[[]string]
-		r.Value, r.Err = c.LookupA(ctx, domain)
-		ach <- r
+		var rr resolverResponse[[]string]
+		rr.Value, rr.Err = r.LookupA(ctx, domain)
+		ach <- rr
 	})
 
 	// async lookup AAAA
 	wg.Go(func() {
-		var r clientResponse[[]string]
-		r.Value, r.Err = c.LookupAAAA(ctx, domain)
-		aaaach <- r
+		var rr resolverResponse[[]string]
+		rr.Value, rr.Err = r.LookupAAAA(ctx, domain)
+		aaaach <- rr
 	})
 
 	// be patient
@@ -95,9 +95,9 @@ func (c *Client) LookupHost(ctx context.Context, domain string) ([]string, error
 }
 
 // LookupA resolves a domain to IPv4 addrs.
-func (c *Client) LookupA(ctx context.Context, domain string) ([]string, error) {
+func (r *Resolver) LookupA(ctx context.Context, domain string) ([]string, error) {
 	query := dnscodec.NewQuery(domain, dns.TypeA)
-	resp, err := c.lookup(ctx, query)
+	resp, err := r.lookup(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -105,9 +105,9 @@ func (c *Client) LookupA(ctx context.Context, domain string) ([]string, error) {
 }
 
 // LookupAAAA resolves a domain to IPv6 addrs.
-func (c *Client) LookupAAAA(ctx context.Context, domain string) ([]string, error) {
+func (r *Resolver) LookupAAAA(ctx context.Context, domain string) ([]string, error) {
 	query := dnscodec.NewQuery(domain, dns.TypeAAAA)
-	resp, err := c.lookup(ctx, query)
+	resp, err := r.lookup(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -115,9 +115,9 @@ func (c *Client) LookupAAAA(ctx context.Context, domain string) ([]string, error
 }
 
 // LookupCNAME resolves a domain to its CNAME.
-func (c *Client) LookupCNAME(ctx context.Context, domain string) (string, error) {
+func (r *Resolver) LookupCNAME(ctx context.Context, domain string) (string, error) {
 	query := dnscodec.NewQuery(domain, dns.TypeCNAME)
-	resp, err := c.lookup(ctx, query)
+	resp, err := r.lookup(ctx, query)
 	if err != nil {
 		return "", err
 	}
@@ -130,16 +130,16 @@ func (c *Client) LookupCNAME(ctx context.Context, domain string) (string, error)
 }
 
 // lookup is the function performing the actual lookup.
-func (c *Client) lookup(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
+func (r *Resolver) lookup(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
 	// TODO(bassosimone): wrap the error like the stdlib does, if possible.
 
 	// Honour the configured lookup timeout
-	ctx, cancel := context.WithTimeout(ctx, c.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, r.Timeout)
 	defer cancel()
 
 	// Try with each exchanger
-	errv := make([]error, 0, len(c.Exchangers))
-	for _, exc := range c.Exchangers {
+	errv := make([]error, 0, len(r.Transports))
+	for _, exc := range r.Transports {
 		if ctx.Err() != nil {
 			break
 		}

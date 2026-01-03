@@ -19,8 +19,8 @@ func TestIntegrationDNSOverUDPWorks(t *testing.T) {
 		t.Skip("skip test in short mode")
 	}
 	ctx := context.Background()
-	client := NewClient(NewUDPExchanger(&net.Dialer{}, "8.8.4.4:53"))
-	addrs, err := client.LookupA(ctx, "dns.google")
+	resolver := NewResolver(NewUDPTransport(&net.Dialer{}, "8.8.4.4:53"))
+	addrs, err := resolver.LookupA(ctx, "dns.google")
 	assert.NoError(t, err)
 	slices.Sort(addrs)
 	expectAddrs := []string{"8.8.4.4", "8.8.8.8"}
@@ -35,9 +35,9 @@ func TestIntegrationDNSOverUDPExchangeAndCollectDuplicatesWork(t *testing.T) {
 	// note: may be flaky when run on high-latency networks
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	exchanger := NewUDPExchanger(&net.Dialer{}, "8.8.4.4:53")
+	transport := NewUDPTransport(&net.Dialer{}, "8.8.4.4:53")
 	query := dnscodec.NewQuery("dns.google", dns.TypeA)
-	resps, err := exchanger.ExchangeAndCollectDuplicates(ctx, query)
+	resps, err := transport.ExchangeAndCollectDuplicates(ctx, query)
 	assert.NoError(t, err)
 	assert.True(t, len(resps) >= 1)
 }
