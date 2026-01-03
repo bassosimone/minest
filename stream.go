@@ -15,6 +15,7 @@ import (
 	"math"
 	"net"
 
+	"github.com/bassosimone/dnscodec"
 	"github.com/bassosimone/runtimex"
 	"github.com/miekg/dns"
 )
@@ -56,7 +57,7 @@ type streamConnectionStater interface {
 }
 
 // Exchange implements [ClientExchanger].
-func (se *StreamExchanger) Exchange(ctx context.Context, query *Query) (*Response, error) {
+func (se *StreamExchanger) Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
 	// 1. create the connection
 	conn, err := se.Dialer.DialContext(ctx, "tcp", se.Endpoint)
 	if err != nil {
@@ -83,10 +84,10 @@ func (se *StreamExchanger) Exchange(ctx context.Context, query *Query) (*Respons
 	// 4. Mutate and serialize the query.
 	query = query.Clone()
 	if _, ok := conn.(streamConnectionStater); ok {
-		query.flags |= queryFlagBlockLengthPadding | queryFlagDNSSec
+		query.Flags |= dnscodec.QueryFlagBlockLengthPadding | dnscodec.QueryFlagDNSSec
 	}
-	query.id = dns.Id()
-	query.maxSize = queryMaxResponseSizeTCP
+	query.ID = dns.Id()
+	query.MaxSize = dnscodec.QueryMaxResponseSizeTCP
 	queryMsg, err := query.NewMsg()
 	if err != nil {
 		return nil, err
@@ -125,7 +126,7 @@ func (se *StreamExchanger) Exchange(ctx context.Context, query *Query) (*Respons
 	if err := respMsg.Unpack(rawResp); err != nil {
 		return nil, err
 	}
-	return NewResponse(queryMsg, respMsg)
+	return dnscodec.ParseResponse(queryMsg, respMsg)
 }
 
 // newStreamMsgFrame creates a new raw frame for sending a message over a stream.

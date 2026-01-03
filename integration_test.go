@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bassosimone/dnscodec"
 	"github.com/miekg/dns"
 	"github.com/quic-go/quic-go/http3"
 	"github.com/stretchr/testify/assert"
@@ -67,7 +68,7 @@ func TestIntegrationDNSOverUDPExchangeAndCollectDuplicatesWork(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	exchanger := NewUDPExchanger(&net.Dialer{}, "8.8.4.4:53")
-	query := NewQuery("dns.google", dns.TypeA)
+	query := dnscodec.NewQuery("dns.google", dns.TypeA)
 	resps, err := exchanger.ExchangeAndCollectDuplicates(ctx, query)
 	assert.NoError(t, err)
 	assert.True(t, len(resps) >= 1)

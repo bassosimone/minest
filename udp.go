@@ -14,6 +14,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bassosimone/dnscodec"
 	"github.com/miekg/dns"
 )
 
@@ -49,7 +50,7 @@ func NewUDPExchanger(dialer UDPDialer, endpoint string) *UDPExchanger {
 var _ ClientExchanger = &UDPExchanger{}
 
 // Exchange implements [ClientExchanger].
-func (ue *UDPExchanger) Exchange(ctx context.Context, query *Query) (*Response, error) {
+func (ue *UDPExchanger) Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
 	// 1. create the connection
 	conn, err := ue.Dialer.DialContext(ctx, "udp", ue.Endpoint)
 	if err != nil {
@@ -75,8 +76,8 @@ func (ue *UDPExchanger) Exchange(ctx context.Context, query *Query) (*Response, 
 
 	// 4. Mutate and serialize the query.
 	query = query.Clone()
-	query.id = dns.Id()
-	query.maxSize = queryMaxResponseSizeUDP
+	query.ID = dns.Id()
+	query.MaxSize = dnscodec.QueryMaxResponseSizeUDP
 	queryMsg, err := query.NewMsg()
 	if err != nil {
 		return nil, err
@@ -92,7 +93,7 @@ func (ue *UDPExchanger) Exchange(ctx context.Context, query *Query) (*Response, 
 	}
 
 	// 6. Read the response message.
-	buff := make([]byte, queryMaxResponseSizeUDP)
+	buff := make([]byte, dnscodec.QueryMaxResponseSizeUDP)
 	count, err := conn.Read(buff)
 	if err != nil {
 		return nil, err
@@ -104,7 +105,7 @@ func (ue *UDPExchanger) Exchange(ctx context.Context, query *Query) (*Response, 
 	if err := respMsg.Unpack(rawResp); err != nil {
 		return nil, err
 	}
-	return NewResponse(queryMsg, respMsg)
+	return dnscodec.ParseResponse(queryMsg, respMsg)
 }
 
 // ExchangeAndCollectDuplicates is like [*UDPExchanger.Exchange] but
@@ -132,7 +133,7 @@ func (ue *UDPExchanger) Exchange(ctx context.Context, query *Query) (*Response, 
 // censorship. If you wrap the connection by providing a custom dialer,
 // you will have access to this additional information anyway.
 func (ue *UDPExchanger) ExchangeAndCollectDuplicates(
-	ctx context.Context, query *Query) ([]*Response, error) {
+	ctx context.Context, query *dnscodec.Query) ([]*dnscodec.Response, error) {
 	// 1. create the connection
 	conn, err := ue.Dialer.DialContext(ctx, "udp", ue.Endpoint)
 	if err != nil {
@@ -161,8 +162,8 @@ func (ue *UDPExchanger) ExchangeAndCollectDuplicates(
 
 	// 4. Mutate and serialize the query.
 	query = query.Clone()
-	query.id = dns.Id()
-	query.maxSize = queryMaxResponseSizeUDP
+	query.ID = dns.Id()
+	query.MaxSize = dnscodec.QueryMaxResponseSizeUDP
 	queryMsg, err := query.NewMsg()
 	if err != nil {
 		return nil, err
@@ -178,10 +179,10 @@ func (ue *UDPExchanger) ExchangeAndCollectDuplicates(
 	}
 
 	// 6. loop collecting responses.
-	var respv []*Response
+	var respv []*dnscodec.Response
 	for {
 		// 6.1. Read the response message.
-		buff := make([]byte, queryMaxResponseSizeUDP)
+		buff := make([]byte, dnscodec.QueryMaxResponseSizeUDP)
 		count, err := conn.Read(buff)
 		if err != nil {
 			expectedErr := errors.Is(err, net.ErrClosed) || errors.Is(err, os.ErrDeadlineExceeded)
@@ -197,7 +198,7 @@ func (ue *UDPExchanger) ExchangeAndCollectDuplicates(
 		if err := respMsg.Unpack(rawResp); err != nil {
 			continue
 		}
-		resp, err := NewResponse(queryMsg, respMsg)
+		resp, err := dnscodec.ParseResponse(queryMsg, respMsg)
 		if err != nil {
 			continue
 		}

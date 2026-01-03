@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bassosimone/dnscodec"
+	"github.com/bassosimone/runtimex"
 	"github.com/miekg/dns"
 )
 
@@ -16,7 +18,7 @@ const DefaultClientTimeout = 10 * time.Second
 
 // ClientExchanger performs a DNS messages exchange.
 type ClientExchanger interface {
-	Exchange(ctx context.Context, query *Query) (*Response, error)
+	Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error)
 }
 
 // Client behaves like [*net.Resolver] but uses a custom round tripper.
@@ -87,14 +89,14 @@ func (c *Client) LookupHost(ctx context.Context, domain string) ([]string, error
 	// join addresses and deal with no data
 	addrs := append(ares.Value, aaaares.Value...)
 	if len(addrs) < 1 {
-		return nil, ErrNoData
+		return nil, dnscodec.ErrNoData
 	}
 	return addrs, nil
 }
 
 // LookupA resolves a domain to IPv4 addrs.
 func (c *Client) LookupA(ctx context.Context, domain string) ([]string, error) {
-	query := NewQuery(domain, dns.TypeA)
+	query := dnscodec.NewQuery(domain, dns.TypeA)
 	resp, err := c.lookup(ctx, query)
 	if err != nil {
 		return nil, err
@@ -104,7 +106,7 @@ func (c *Client) LookupA(ctx context.Context, domain string) ([]string, error) {
 
 // LookupAAAA resolves a domain to IPv6 addrs.
 func (c *Client) LookupAAAA(ctx context.Context, domain string) ([]string, error) {
-	query := NewQuery(domain, dns.TypeAAAA)
+	query := dnscodec.NewQuery(domain, dns.TypeAAAA)
 	resp, err := c.lookup(ctx, query)
 	if err != nil {
 		return nil, err
@@ -112,18 +114,23 @@ func (c *Client) LookupAAAA(ctx context.Context, domain string) ([]string, error
 	return resp.RecordsAAAA()
 }
 
-// LookupCNAME resolves a domain to its first CNAME.
+// LookupCNAME resolves a domain to its CNAME.
 func (c *Client) LookupCNAME(ctx context.Context, domain string) (string, error) {
-	query := NewQuery(domain, dns.TypeCNAME)
+	query := dnscodec.NewQuery(domain, dns.TypeCNAME)
 	resp, err := c.lookup(ctx, query)
 	if err != nil {
 		return "", err
 	}
-	return resp.RecordFirstCNAME()
+	cnames, err := resp.RecordsCNAME()
+	if err != nil {
+		return "", err
+	}
+	runtimex.Assert(len(cnames) > 0)
+	return cnames[0], nil
 }
 
 // lookup is the function performing the actual lookup.
-func (c *Client) lookup(ctx context.Context, query *Query) (*Response, error) {
+func (c *Client) lookup(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
 	// TODO(bassosimone): wrap the error like the stdlib does, if possible.
 
 	// Honour the configured lookup timeout

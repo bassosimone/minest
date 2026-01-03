@@ -19,6 +19,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/bassosimone/dnscodec"
 	"github.com/miekg/dns"
 	"github.com/quic-go/quic-go"
 )
@@ -76,7 +77,7 @@ func NewQUICExchanger(dialer QUICDialer, endpoint string) *QUICExchanger {
 var _ ClientExchanger = &QUICExchanger{}
 
 // Exchange implements [ClientExchanger].
-func (qe *QUICExchanger) Exchange(ctx context.Context, query *Query) (*Response, error) {
+func (qe *QUICExchanger) Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
 	// 1. create the connection
 	conn, err := qe.Dialer.DialContext(ctx, "udp", qe.Endpoint)
 	if err != nil {
@@ -114,9 +115,9 @@ func (qe *QUICExchanger) Exchange(ctx context.Context, query *Query) (*Response,
 	// For DoQ, by default we leave the query ID to zero, which
 	// is what the RFC requires to do.
 	query = query.Clone()
-	query.flags |= queryFlagBlockLengthPadding | queryFlagDNSSec
-	query.id = 0
-	query.maxSize = queryMaxResponseSizeTCP
+	query.Flags |= dnscodec.QueryFlagBlockLengthPadding | dnscodec.QueryFlagDNSSec
+	query.ID = 0
+	query.MaxSize = dnscodec.QueryMaxResponseSizeTCP
 	queryMsg, err := query.NewMsg()
 	if err != nil {
 		return nil, err
@@ -169,5 +170,5 @@ func (qe *QUICExchanger) Exchange(ctx context.Context, query *Query) (*Response,
 	if err := respMsg.Unpack(rawResp); err != nil {
 		return nil, err
 	}
-	return NewResponse(queryMsg, respMsg)
+	return dnscodec.ParseResponse(queryMsg, respMsg)
 }

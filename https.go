@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/bassosimone/dnscodec"
 	"github.com/miekg/dns"
 )
 
@@ -48,15 +49,15 @@ func NewHTTPSExchanger(client HTTPSClient, URL string) *HTTPSExchanger {
 var _ ClientExchanger = &HTTPSExchanger{}
 
 // Exchange implements [ClientExchanger].
-func (he *HTTPSExchanger) Exchange(ctx context.Context, query *Query) (*Response, error) {
+func (he *HTTPSExchanger) Exchange(ctx context.Context, query *dnscodec.Query) (*dnscodec.Response, error) {
 	// 1. Mutate and serialize the query
 	//
 	// For DoH, by default we leave the query ID to zero, which
 	// is what the RFC suggests to do.
 	query = query.Clone()
-	query.flags |= queryFlagBlockLengthPadding | queryFlagDNSSec
-	query.id = 0
-	query.maxSize = queryMaxResponseSizeTCP
+	query.Flags |= dnscodec.QueryFlagBlockLengthPadding | dnscodec.QueryFlagDNSSec
+	query.ID = 0
+	query.MaxSize = dnscodec.QueryMaxResponseSizeTCP
 	queryMsg, err := query.NewMsg()
 	if err != nil {
 		return nil, err
@@ -82,17 +83,17 @@ func (he *HTTPSExchanger) Exchange(ctx context.Context, query *Query) (*Response
 
 	// 4. Ensure that the response makes sense
 	if httpResp.StatusCode != 200 {
-		return nil, ErrServerMisbehaving
+		return nil, dnscodec.ErrServerMisbehaving
 	}
 	if httpResp.Header.Get("content-type") != "application/dns-message" {
-		return nil, ErrServerMisbehaving
+		return nil, dnscodec.ErrServerMisbehaving
 	}
 
 	// 5. Limit response body to a reasonable size and read it
-	reader := io.LimitReader(httpResp.Body, queryMaxResponseSizeTCP)
+	reader := io.LimitReader(httpResp.Body, dnscodec.QueryMaxResponseSizeTCP)
 	rawResp, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, ErrServerMisbehaving
+		return nil, dnscodec.ErrServerMisbehaving
 	}
 
 	// 6. Attempt to parse the raw response body
@@ -102,5 +103,5 @@ func (he *HTTPSExchanger) Exchange(ctx context.Context, query *Query) (*Response
 	}
 
 	// 7. Parse the response and return the parsing result
-	return NewResponse(queryMsg, respMsg)
+	return dnscodec.ParseResponse(queryMsg, respMsg)
 }
