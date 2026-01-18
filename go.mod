@@ -4,14 +4,15 @@ go 1.25.5
 
 require (
 	github.com/bassosimone/dnscodec v0.0.0-20260116090143-50c94eedef50
-	github.com/bassosimone/dnstest v0.0.0-20251231113033-a337a8ce22ac
-	github.com/bassosimone/netstub v0.0.0-20260103182916-80a8b9d44444
+	github.com/bassosimone/dnstest v0.0.0-20260116090144-6394406669d1
+	github.com/bassosimone/netstub v0.0.0-20260108162448-d163192543c6
 	github.com/bassosimone/runtimex v0.0.0-20260108162100-336f3823f6b7
 	github.com/miekg/dns v1.1.70
 	github.com/stretchr/testify v1.11.1
 )
 
 require (
+	github.com/bassosimone/pkitest v0.0.0-20260108162522-4e97d4738e31 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
