@@ -7,7 +7,7 @@ require (
 	github.com/bassosimone/dnstest v0.0.0-20260118074942-8b67c89ca4ec
 	github.com/bassosimone/netstub v0.0.0-20260108162448-d163192543c6
 	github.com/bassosimone/runtimex v0.0.0-20260108162100-336f3823f6b7
-	github.com/miekg/dns v1.1.70
+	github.com/miekg/dns v1.1.72
 	github.com/stretchr/testify v1.11.1
 )
 
