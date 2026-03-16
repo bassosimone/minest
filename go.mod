@@ -3,8 +3,8 @@ module github.com/bassosimone/minest
 go 1.25.5
 
 require (
-	github.com/bassosimone/dnscodec v0.0.0-20260310100807-317675eb697f
-	github.com/bassosimone/dnstest v0.0.0-20260310100807-504008aac27d
+	github.com/bassosimone/dnscodec v0.0.0-20260315095815-6c62273d0db8
+	github.com/bassosimone/dnstest v0.0.0-20260315095815-43f9058b5317
 	github.com/bassosimone/netstub v0.0.0-20260215140819-e5f4b4b48997
 	github.com/bassosimone/runtimex v0.0.0-20260108162100-336f3823f6b7
 	github.com/miekg/dns v1.1.72
