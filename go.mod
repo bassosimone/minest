@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/bassosimone/dnscodec v0.0.0-20260525092955-57f91a767d2f
-	github.com/bassosimone/dnstest v0.0.0-20260525094743-b1e56ab3dd3f
+	github.com/bassosimone/dnstest v0.0.0-20260608045954-c081bd6f2cbb
 	github.com/bassosimone/netstub v0.0.0-20260506051424-2560572cc9cf
 	github.com/bassosimone/runtimex v0.0.0-20260430082757-ec3a7b516e79
 	github.com/miekg/dns v1.1.72
