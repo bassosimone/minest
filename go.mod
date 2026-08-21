@@ -8,13 +8,11 @@ require (
 	github.com/bassosimone/netstub v0.0.0-20260708092707-84f2b5087f74
 	github.com/bassosimone/runtimex v0.0.0-20260708083610-01df83158243
 	github.com/miekg/dns v1.1.72
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 )
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
