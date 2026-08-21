@@ -3,22 +3,17 @@ module github.com/bassosimone/minest
 go 1.25.5
 
 require (
-	github.com/bassosimone/dnscodec v0.0.0-20260708085128-509089cc75f8
-	github.com/bassosimone/dnstest v0.0.0-20260708095631-cc76beccfa05
-	github.com/bassosimone/netstub v0.0.0-20260708092707-84f2b5087f74
-	github.com/bassosimone/runtimex v0.0.0-20260708083610-01df83158243
-	github.com/miekg/dns v1.1.72
-	github.com/stretchr/testify v1.12.0
+	github.com/bassosimone/dnscodec v0.0.0-20260817130841-5191fab705bf
+	github.com/bassosimone/dnstest v0.0.0-20260817133007-71254cf4c67c
+	github.com/bassosimone/netstub v0.0.0-20260817131758-ffe5abff4a15
+	github.com/bassosimone/runtimex v0.0.0-20260817130226-a470a996118d
+	github.com/miekg/dns v1.1.73
+	github.com/stretchr/testify v1.12.1
 )
 
 require (
-	github.com/kr/pretty v0.3.1 // indirect
-	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.39.0 // indirect
-	golang.org/x/tools v0.47.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	golang.org/x/text v0.41.0 // indirect
 )
