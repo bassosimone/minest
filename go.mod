@@ -3,10 +3,10 @@ module github.com/bassosimone/minest
 go 1.26.0
 
 require (
-	github.com/bassosimone/dnscodec v0.0.0-20260920134140-e91c2ba33014
-	github.com/bassosimone/dnstest v0.0.0-20260920134733-9b5a6cabb432
-	github.com/bassosimone/netstub v0.0.0-20260920134457-30c052c7ef3a
-	github.com/bassosimone/runtimex v0.0.0-20260920130843-b72080259a60
+	github.com/bassosimone/dnscodec v0.0.0-20260928111729-777d57044539
+	github.com/bassosimone/dnstest v0.0.0-20260928112322-b128c7797e99
+	github.com/bassosimone/netstub v0.0.0-20260928112048-621fd84591bd
+	github.com/bassosimone/runtimex v0.0.0-20260928111457-f2fe934d5065
 	github.com/miekg/dns v1.1.73
 	github.com/stretchr/testify v1.12.1
 )
